@@ -8,22 +8,27 @@ let checkButton;
 let showSolutionButton;
 let resetButton;
 let checkTimerBadge;
+let checkTimerBarEl;
+let checkTimerLabelEl;
+let checkTimerIntervalId = null;
 let extraLetters = 0;
 let dictionary = new Set();
 let dictionaryLoaded = false;
-let largeDictionaryLoaded = false;
-let largeDictionaryPromise = null;
+let longDictionaryLoaded = false;
+let longDictionaryPromise = null;
 let checkInProgress = false;
 let checkProgressText = '';
 let checkDeadlineMs = null;
 const thinkingIntervals = new Map();
-const SOLVER_TIMEOUT_MS = 90000;
+const SOLVER_TIMEOUT_MS = 120000;
 const GRID_SIZE = 20;
 const QUICK_SOLUTION_LIMIT = 1;
 const LAYOUT_MAX_WIDTH = 800;
 const MOBILE_BREAKPOINT = 520;
 const PAGE_GUTTER = 16;
 const BUTTON_GAP = 12;
+const TIMER_TOP_CLEARANCE_DESKTOP = 56;
+const TIMER_TOP_CLEARANCE_MOBILE = 68;
 const COMMON_WORDS = new Set([
   'about', 'after', 'again', 'air', 'all', 'also', 'an', 'and', 'any', 'as', 'at', 'back', 'be', 'because',
   'been', 'before', 'between', 'big', 'book', 'both', 'boy', 'but', 'by', 'call', 'can', 'change', 'come',
@@ -56,7 +61,7 @@ let wordLookupResult;
 let appCanvas;
 let layout = null;
 
-// Load short dictionary eagerly; long dictionary is loaded on demand
+// Load the short dictionary eagerly; load 5-8 letter words on demand.
 function preload() {
   loadJSON('dictionary-short.json', (data) => {
     dictionary = new Set(data);
@@ -69,34 +74,35 @@ function preload() {
   });
 }
 
-function loadLargeDictionary() {
-  if (largeDictionaryLoaded) {
+function loadLongDictionary() {
+  if (longDictionaryLoaded) {
     return Promise.resolve();
   }
 
-  if (largeDictionaryPromise) {
-    return largeDictionaryPromise;
+  if (longDictionaryPromise) {
+    return longDictionaryPromise;
   }
 
-  // Use native fetch and keep one shared Promise so concurrent callers cannot race.
-  largeDictionaryPromise = fetch('dictionary-long.json')
+  longDictionaryPromise = fetch('dictionary-long.json')
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     })
     .then((data) => {
-      for (const word of data) dictionary.add(word);
-      largeDictionaryLoaded = true;
-      console.log(`Full dictionary now has ${dictionary.size} words`);
+      for (const word of data) {
+        dictionary.add(word);
+      }
+      longDictionaryLoaded = true;
+      console.log(`Long dictionary loaded. Total words now ${dictionary.size}`);
     })
     .catch((error) => {
-      // Allow retry if loading fails.
-      largeDictionaryPromise = null;
+      // Allow retry after failures.
+      longDictionaryPromise = null;
       console.error('Error loading dictionary-long.json:', error);
       throw error;
     });
 
-  return largeDictionaryPromise;
+  return longDictionaryPromise;
 }
 
 function setup() {
@@ -126,10 +132,12 @@ function setup() {
   resetButton.mousePressed(resetPuzzle);
 
   checkTimerBadge = createDiv(
-    `<div class="check-timer-badge__label">THINKING FOR ${SOLVER_TIMEOUT_MS / 1000} SEC</div><div class="check-timer-badge__bar"></div>`
+    `<div class="check-timer-badge__label">THINKING ${SOLVER_TIMEOUT_MS / 1000}s</div><div class="check-timer-badge__bar"></div>`
   );
   checkTimerBadge.addClass('check-timer-badge');
   checkTimerBadge.style('--check-timer-duration', `${SOLVER_TIMEOUT_MS}ms`);
+  checkTimerLabelEl = checkTimerBadge.elt.querySelector('.check-timer-badge__label');
+  checkTimerBarEl = checkTimerBadge.elt.querySelector('.check-timer-badge__bar');
   checkTimerBadge.hide();
 
   solutionList = createDiv('');
@@ -238,20 +246,21 @@ function updateLayout() {
   const contentLeft = Math.max(PAGE_GUTTER, Math.floor((viewportWidth - contentWidth) / 2));
   const mobile = contentWidth <= MOBILE_BREAKPOINT;
   const diceLayout = getDiceLayout(contentWidth, mobile);
+  const topClearance = mobile ? TIMER_TOP_CLEARANCE_MOBILE : TIMER_TOP_CLEARANCE_DESKTOP;
 
-  const titleY = mobile ? 64 : 40;
-  const instructionY = mobile ? 86 : 56;
-  const inputTop = mobile ? 118 : 80;
+  const titleY = (mobile ? 64 : 40) + topClearance;
+  const instructionY = (mobile ? 86 : 56) + topClearance;
+  const inputTop = (mobile ? 118 : 80) + topClearance;
   const inputHeight = mobile ? 46 : 40;
-  const checkTop = mobile ? 176 : 140;
-  const resetTop = mobile ? 234 : 140;
-  const showTop = mobile ? 292 : 190;
-  const resultBoxY = mobile ? 350 : 222;
+  const checkTop = (mobile ? 176 : 140) + topClearance;
+  const resetTop = (mobile ? 234 : 140) + topClearance;
+  const showTop = (mobile ? 292 : 190) + topClearance;
+  const resultBoxY = (mobile ? 350 : 222) + topClearance;
   const resultBoxH = mobile ? 84 : 72;
-  const solutionPromptY = mobile ? 452 : 480;
+  const solutionPromptY = (mobile ? 452 : 480) + topClearance;
   const solutionPromptH = mobile ? 56 : 34;
-  const diceLabelY = mobile ? 520 : 320;
-  const diceStartY = mobile ? 560 : 360;
+  const diceLabelY = (mobile ? 520 : 320) + topClearance;
+  const diceStartY = (mobile ? 560 : 360) + topClearance;
   const canvasHeight = diceStartY + diceLayout.totalHeight + 56;
 
   resizeCanvas(contentWidth, canvasHeight);
@@ -432,15 +441,15 @@ async function checkSolvable() {
   checkDeadlineMs = Date.now() + SOLVER_TIMEOUT_MS;
   startCheckTimer();
 
-  if (!largeDictionaryLoaded) {
-    checkProgressText = 'Loading full dictionary';
+  if (!longDictionaryLoaded) {
+    checkProgressText = 'Loading long dictionary';
     try {
-      await loadLargeDictionary();
+      await loadLongDictionary();
     } catch (error) {
       checkInProgress = false;
       checkDeadlineMs = null;
       stopCheckTimer();
-      resultText = 'Error: Could not load full dictionary.';
+      resultText = 'Error: Could not load long dictionary.';
       return;
     }
   }
@@ -878,29 +887,7 @@ function showSolution() {
 }
 
 function resetPuzzle() {
-  checkInProgress = false;
-  checkDeadlineMs = null;
-  stopCheckTimer();
-
-  inputField.value('');
-  diceInput = '';
-  resultText = '';
-  extraLetters = 0;
-  currentSolutions = [];
-  solutionVisible = false;
-  renderSolutions();
-  showSolutionButton.hide();
-
-  solutionCheckInput.value('');
-  solutionCheckResult.html('');
-  solutionCheckResult.class('tool-result');
-
-  wordLookupInput.value('');
-  wordLookupResult.html('');
-  wordLookupResult.class('tool-result');
-
-  stopThinkingResult(solutionCheckResult);
-  stopThinkingResult(wordLookupResult);
+  window.location.reload();
 }
 
 async function checkUserSolution() {
@@ -912,13 +899,13 @@ async function checkUserSolution() {
   startThinkingResult(solutionCheckResult, 'Checking solution');
 
   const wordsPrecheck = parseWords(solutionCheckInput.value());
-  if (wordsPrecheck.some((w) => w.length >= 6) && !largeDictionaryLoaded) {
-    startThinkingResult(solutionCheckResult, 'Loading dictionary');
+  if (wordsPrecheck.some((w) => w.length > 4 && w.length <= 8) && !longDictionaryLoaded) {
+    startThinkingResult(solutionCheckResult, 'Loading long dictionary');
     try {
-      await loadLargeDictionary();
+      await loadLongDictionary();
     } catch (error) {
       stopThinkingResult(solutionCheckResult);
-      setToolResult(solutionCheckResult, 'Error: Could not load full dictionary.', 'error');
+      setToolResult(solutionCheckResult, 'Error: Could not load long dictionary.', 'error');
       return;
     }
     startThinkingResult(solutionCheckResult, 'Checking solution');
@@ -994,13 +981,13 @@ async function lookupWord() {
 
   startThinkingResult(wordLookupResult, 'Looking up word');
 
-  if (word.length >= 6 && !largeDictionaryLoaded) {
-    startThinkingResult(wordLookupResult, 'Loading dictionary');
+  if (word.length > 4 && word.length <= 8 && !longDictionaryLoaded) {
+    startThinkingResult(wordLookupResult, 'Loading long dictionary');
     try {
-      await loadLargeDictionary();
+      await loadLongDictionary();
     } catch (error) {
       stopThinkingResult(wordLookupResult);
-      setToolResult(wordLookupResult, 'Error: Could not load full dictionary.', 'error');
+      setToolResult(wordLookupResult, 'Error: Could not load long dictionary.', 'error');
       return;
     }
     startThinkingResult(wordLookupResult, 'Looking up word');
@@ -1045,22 +1032,67 @@ function stopThinkingResult(element) {
 
 function startCheckTimer() {
   stopCheckTimer();
-  if (!checkDeadlineMs) {
+  if (!checkDeadlineMs || !checkTimerBadge) {
     return;
   }
 
-  // Restart animation from the full solver timeout each new check.
-  checkTimerBadge.removeClass('check-timer-badge--active');
-  void checkTimerBadge.elt.offsetWidth;
-  checkTimerBadge.addClass('check-timer-badge--active');
+  // Keep the CSS variable in sync when timeout changes.
+  checkTimerBadge.style('--check-timer-duration', `${SOLVER_TIMEOUT_MS}ms`);
+
+  // Show first, then reset animation so the countdown always starts visible.
   checkTimerBadge.show();
+  if (checkTimerBarEl) {
+    checkTimerBarEl.style.animation = 'none';
+    checkTimerBarEl.style.transform = 'scaleX(1)';
+    void checkTimerBarEl.offsetWidth;
+    checkTimerBarEl.style.animation = '';
+  }
+
+  checkTimerBadge.addClass('check-timer-badge--active');
+
+  updateCheckTimerLabel();
+  checkTimerIntervalId = setInterval(() => {
+    if (!checkDeadlineMs) {
+      return;
+    }
+
+    updateCheckTimerLabel();
+  }, 150);
 }
 
 function stopCheckTimer() {
+  if (checkTimerIntervalId) {
+    clearInterval(checkTimerIntervalId);
+    checkTimerIntervalId = null;
+  }
+
   if (checkTimerBadge) {
     checkTimerBadge.removeClass('check-timer-badge--active');
+
+    // Reset visual state so the next run starts from a full bar.
+    if (checkTimerBarEl) {
+      checkTimerBarEl.style.animation = 'none';
+      checkTimerBarEl.style.transform = 'scaleX(1)';
+      void checkTimerBarEl.offsetWidth;
+      checkTimerBarEl.style.animation = '';
+    }
+
     checkTimerBadge.hide();
   }
+
+  if (checkTimerLabelEl) {
+    checkTimerLabelEl.textContent = `THINKING ${SOLVER_TIMEOUT_MS / 1000}s`;
+  }
+}
+
+function updateCheckTimerLabel() {
+  if (!checkTimerLabelEl) {
+    return;
+  }
+
+  const remainingMs = Math.max(0, (checkDeadlineMs || Date.now()) - Date.now());
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  checkTimerLabelEl.textContent = `THINKING ${remainingSeconds}s`;
 }
 
 function parseWords(value) {

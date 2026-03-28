@@ -16,7 +16,10 @@ pip install nltk
 python generate_dictionary.py
 ```
 
-This creates a `dictionary.json` file with all valid English words between 3-12 letters.
+This creates `dictionary.json` plus split dictionaries:
+- `dictionary-short.json` with words of length 3-4 (loaded eagerly)
+- `dictionary-long.json` with words of length 5-8 (lazy-loaded on demand)
+- `dictionary-extra.json` with words of length 9-12 (generated but not used by the app)
 
 ### 2. Run the Application
 
@@ -46,7 +49,7 @@ Solutions must use at least two words, and every word after the first must inter
 
 ## Features
 
-- **Large Dictionary**: Uses 196,802 words from NLTK corpus
+- **Dictionary-backed Solver**: Uses NLTK-derived words with eager + lazy loading
 - **Visual Display**: Shows your dice as individual tiles
 - **Smart Algorithm**: Uses backtracking to find optimal word combinations
 - **Real-time Feedback**: Instantly tells you if the puzzle is solvable
@@ -62,6 +65,9 @@ qless-solve/
 ├── sketch.js           # p5.js application code
 ├── style.css           # Styles
 ├── dictionary.json     # Word dictionary (generated)
+├── dictionary-short.json # Eager dictionary (3-4 letters)
+├── dictionary-long.json  # Lazy-loaded dictionary (5-8 letters)
+├── dictionary-extra.json # Extra dictionary (9-12 letters, not used at runtime)
 ├── generate_dictionary.py  # Script to generate dictionary
 ├── requirements.txt    # Python dependencies
 └── libraries/

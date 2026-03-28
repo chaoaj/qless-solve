@@ -41,20 +41,28 @@ def generate_dictionary():
         json.dump(sorted_words, f, indent=2)
     print(f"Dictionary saved to: {output_path}")
 
-    # Save split dictionaries for optimized loading:
-    # short words (< 6 letters) are loaded eagerly; long words (>= 6) are lazy-loaded on demand
-    short_words = [w for w in sorted_words if len(w) < 6]
-    long_words = [w for w in sorted_words if len(w) >= 6]
+    # Save split dictionaries for runtime loading and archival:
+    # short words (<= 4 letters) are loaded eagerly.
+    # long words (5-8 letters) are lazy-loaded on demand.
+    # extra words (> 8 letters) are generated but not used at runtime.
+    short_words = [w for w in sorted_words if len(w) <= 4]
+    long_words = [w for w in sorted_words if 5 <= len(w) <= 8]
+    extra_words = [w for w in sorted_words if len(w) > 8]
 
     short_path = os.path.join(base_dir, 'dictionary-short.json')
     with open(short_path, 'w', encoding='utf-8') as f:
         json.dump(short_words, f)
-    print(f"Short dictionary (<6 letters, {len(short_words)} words) saved to: {short_path}")
+    print(f"Short dictionary (<=4 letters, {len(short_words)} words) saved to: {short_path}")
 
     long_path = os.path.join(base_dir, 'dictionary-long.json')
     with open(long_path, 'w', encoding='utf-8') as f:
         json.dump(long_words, f)
-    print(f"Long dictionary (>=6 letters, {len(long_words)} words) saved to: {long_path}")
+    print(f"Long dictionary (5-8 letters, {len(long_words)} words) saved to: {long_path}")
+
+    extra_path = os.path.join(base_dir, 'dictionary-extra.json')
+    with open(extra_path, 'w', encoding='utf-8') as f:
+        json.dump(extra_words, f)
+    print(f"Extra dictionary (>8 letters, {len(extra_words)} words) saved to: {extra_path}")
 
     return sorted_words
 
