@@ -1,8 +1,187 @@
 html, body {
+  background: #ececec;
+  color: #1b1b1b;
+  min-height: 100%;
   margin: 0;
+  overflow-x: hidden;
   padding: 0;
+  font-family: Arial, sans-serif;
 }
 
 canvas {
   display: block;
+  margin: 0 auto;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+.app-input {
+  appearance: none;
+  border: 2px solid #b8c3d1;
+  border-radius: 12px;
+  box-sizing: border-box;
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.app-input:focus {
+  border-color: #1f5fbf;
+  box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.14);
+  outline: none;
+}
+
+.app-button {
+  appearance: none;
+  background: #1f5fbf;
+  border: none;
+  border-radius: 12px;
+  box-sizing: border-box;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.app-button--secondary {
+  background: #4a5565;
+}
+
+.solution-list {
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 2px solid #1f5fbf;
+  border-radius: 12px;
+  color: #1b1b1b;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.solution-list__title {
+  color: #1f5fbf;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.solution-list ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.solution-list li {
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.tool-label {
+  color: #1b1b1b;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tool-result {
+  border-radius: 10px;
+  box-sizing: border-box;
+  font-size: 15px;
+  line-height: 1.4;
+  padding: 12px 14px;
+}
+
+.tool-result--success {
+  background: #e8f6eb;
+  border: 1px solid #2f8f46;
+  color: #1e6a33;
+}
+
+.tool-result--warning {
+  background: #fff4de;
+  border: 1px solid #c78a1f;
+  color: #8a5a07;
+}
+
+.tool-result--error {
+  background: #fde9e7;
+  border: 1px solid #c44638;
+  color: #8f2318;
+}
+
+.check-timer-badge {
+  background: #141414;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #ffeb3b;
+  font-size: 18px;
+  font-weight: 700;
+  height: 34px;
+  line-height: 28px;
+  overflow: hidden;
+  padding: 2px 10px 4px;
+  pointer-events: none;
+  position: fixed;
+  right: max(10px, env(safe-area-inset-right));
+  text-align: right;
+  top: max(8px, env(safe-area-inset-top));
+  width: min(230px, calc(100vw - 20px));
+  z-index: 999;
+}
+
+.check-timer-badge__label {
+  letter-spacing: 0.2px;
+}
+
+.check-timer-badge__bar {
+  background: linear-gradient(90deg, #ffeb3b 0%, #ffc107 100%);
+  border-radius: 2px;
+  height: 3px;
+  margin-top: 1px;
+  transform-origin: right center;
+  width: 100%;
+}
+
+.check-timer-badge--active .check-timer-badge__bar {
+  animation: check-timer-countdown var(--check-timer-duration, 90000ms) linear forwards;
+}
+
+@keyframes check-timer-countdown {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .solution-list {
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .solution-list__title {
+    font-size: 17px;
+  }
+
+  .tool-label {
+    font-size: 17px;
+    line-height: 1.35;
+  }
+
+  .tool-result {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .check-timer-badge {
+    border-radius: 10px;
+    font-size: 14px;
+    height: 30px;
+    line-height: 24px;
+    padding: 2px 8px 4px;
+  }
 }
