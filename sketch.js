@@ -190,7 +190,7 @@ function getViewportWidth() {
 }
 
 function getDiceLayout(contentWidth, mobile, letterCount = 12) {
-  const columns = mobile ? Math.min(6, Math.max(1, letterCount)) : Math.min(12, Math.max(1, letterCount));
+  const columns = Math.min(6, Math.max(1, letterCount));
   const gap = mobile ? 8 : 10;
   const minTileSize = mobile ? 36 : 40;
   const maxTileSize = mobile ? 44 : 50;
