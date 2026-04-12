@@ -178,6 +178,36 @@ function setup() {
   extraLetters = 0;
   currentSolutions = [];
   solutionVisible = false;
+
+  // If ?letters=XXXXXXXXXXXX is present in the querystring, preload it.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const lettersParam = params.get('letters');
+    if (lettersParam && /^[A-Za-z]{12}$/.test(lettersParam)) {
+      const normalized = lettersParam.toLowerCase();
+      inputField.value(normalized);
+      diceInput = normalized;
+      // Run the solver once dictionaries are ready. If short dictionary
+      // hasn't loaded yet, poll briefly until it is.
+      const runWhenReady = () => {
+        if (dictionaryLoaded) {
+          checkSolvable();
+          return true;
+        }
+        return false;
+      };
+
+      if (!runWhenReady()) {
+        const pollId = setInterval(() => {
+          if (runWhenReady()) {
+            clearInterval(pollId);
+          }
+        }, 150);
+      }
+    }
+  } catch (e) {
+    // ignore any URL parsing errors
+  }
 }
 
 function windowResized() {
